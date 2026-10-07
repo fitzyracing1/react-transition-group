@@ -211,6 +211,54 @@ describe('without nodeRef', () => {
       expect(callbackRef).toHaveBeenLastCalledWith(null);
     });
 
+    it('does not detach/re-attach the child’s ref while transitioning', async () => {
+      const callbackRef = jest.fn();
+      const onEntered = jest.fn();
+      const onExited = jest.fn();
+      const { container, setProps } = render(
+        <Transition
+          in={false}
+          timeout={0}
+          onEntered={onEntered}
+          onExited={onExited}
+        >
+          <div className="child" ref={callbackRef} />
+        </Transition>
+      );
+      setProps({ in: true });
+      await waitFor(() => expect(onEntered).toHaveBeenCalled());
+      setProps({ in: false });
+      await waitFor(() => expect(onExited).toHaveBeenCalled());
+      expect(callbackRef).toHaveBeenCalledTimes(1);
+      expect(callbackRef).toHaveBeenCalledWith(
+        container.querySelector('.child')
+      );
+    });
+
+    (REACT_MAJOR >= 19 ? it : it.skip)(
+      'React 19: supports callback refs that return a cleanup function',
+      async () => {
+        const events = [];
+        const ref = (node) => {
+          events.push(['attach', node]);
+          return () => events.push(['cleanup']);
+        };
+        const onEntered = jest.fn();
+        const { container, setProps, unmount } = render(
+          <Transition in={false} timeout={0} onEntered={onEntered}>
+            <div className="child" ref={ref} />
+          </Transition>
+        );
+        const node = container.querySelector('.child');
+        setProps({ in: true });
+        await waitFor(() =>
+          expect(onEntered).toHaveBeenCalledWith(node, false)
+        );
+        unmount();
+        expect(events).toEqual([['attach', node], ['cleanup']]);
+      }
+    );
+
     it('finds the DOM node of a forwardRef component child', async () => {
       const Box = React.forwardRef((props, ref) => (
         <section ref={ref} {...props} />
