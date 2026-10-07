@@ -1,0 +1,10 @@
+{
+  "name": "rtg-compat-react17",
+  "private": true,
+  "description": "React 17 runtime used by jest.compat.config.js (REACT_COMPAT=17)",
+  "dependencies": {
+    "@testing-library/react": "12.1.5",
+    "react": "17.0.2",
+    "react-dom": "17.0.2"
+  }
+}

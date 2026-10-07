@@ -1,0 +1,11 @@
+{
+  "name": "rtg-compat-react19",
+  "private": true,
+  "description": "React 19 runtime used by jest.compat.config.js (REACT_COMPAT=19)",
+  "dependencies": {
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/react": "^16.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
+}

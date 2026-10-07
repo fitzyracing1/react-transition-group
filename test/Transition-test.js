@@ -197,34 +197,44 @@ describe('Transition', () => {
     });
   });
 
-  it('should use `React.findDOMNode` when `nodeRef` is not provided', () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-    const findDOMNodeSpy = jest.spyOn(ReactDOM, 'findDOMNode');
+  // React 19 removed `ReactDOM.findDOMNode`; these two only apply to React <= 18.
+  const itWithFindDOMNode =
+    typeof ReactDOM.findDOMNode === 'function' ? it : it.skip;
 
-    render(
-      <Transition in appear timeout={0}>
-        <div />
-      </Transition>
-    );
+  itWithFindDOMNode(
+    'should use `React.findDOMNode` when `nodeRef` is not provided',
+    () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const findDOMNodeSpy = jest.spyOn(ReactDOM, 'findDOMNode');
 
-    expect(findDOMNodeSpy).toHaveBeenCalled();
-    findDOMNodeSpy.mockRestore();
-    consoleSpy.mockRestore();
-  });
+      render(
+        <Transition in appear timeout={0}>
+          <div />
+        </Transition>
+      );
 
-  it('should not use `React.findDOMNode` when `nodeRef` is provided', () => {
-    const findDOMNodeSpy = jest.spyOn(ReactDOM, 'findDOMNode');
+      expect(findDOMNodeSpy).toHaveBeenCalled();
+      findDOMNodeSpy.mockRestore();
+      consoleSpy.mockRestore();
+    }
+  );
 
-    const nodeRef = React.createRef();
-    render(
-      <Transition nodeRef={nodeRef} in appear timeout={0}>
-        <div ref={nodeRef} />
-      </Transition>
-    );
+  itWithFindDOMNode(
+    'should not use `React.findDOMNode` when `nodeRef` is provided',
+    () => {
+      const findDOMNodeSpy = jest.spyOn(ReactDOM, 'findDOMNode');
 
-    expect(findDOMNodeSpy).not.toHaveBeenCalled();
-    findDOMNodeSpy.mockRestore();
-  });
+      const nodeRef = React.createRef();
+      render(
+        <Transition nodeRef={nodeRef} in appear timeout={0}>
+          <div ref={nodeRef} />
+        </Transition>
+      );
+
+      expect(findDOMNodeSpy).not.toHaveBeenCalled();
+      findDOMNodeSpy.mockRestore();
+    }
+  );
 
   describe('appearing timeout', () => {
     it('should use enter timeout if appear not set', async () => {

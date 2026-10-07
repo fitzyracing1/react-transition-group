@@ -208,14 +208,19 @@ describe('CSSTransitionGroup', () => {
     }
 
     render(<Component />, container);
-    render(
+    const { unmount } = render(
       <Component>
         <YoloTransition key="yolo" id="yolo" />
       </Component>,
       container
     );
 
-    ReactDOM.unmountComponentAtNode(container);
+    // `unmountComponentAtNode` was removed in React 19
+    if (ReactDOM.unmountComponentAtNode) {
+      ReactDOM.unmountComponentAtNode(container);
+    } else {
+      unmount();
+    }
 
     // Testing that no exception is thrown here, as the timeout has been cleared.
     act(() => {

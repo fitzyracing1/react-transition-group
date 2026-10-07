@@ -1,0 +1,10 @@
+{
+  "name": "rtg-compat-react16",
+  "private": true,
+  "description": "React 16 runtime used by jest.compat.config.js (REACT_COMPAT=16)",
+  "dependencies": {
+    "@testing-library/react": "12.1.5",
+    "react": "16.14.0",
+    "react-dom": "16.14.0"
+  }
+}
