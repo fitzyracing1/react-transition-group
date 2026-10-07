@@ -1,6 +1,6 @@
 import PropTypes from 'prop-types';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { canUseFindDOMNode, findDOMNode, isDOMNode } from './utils/findDOMNode';
 import TransitionGroup from './TransitionGroup';
 
 /**
@@ -29,12 +29,27 @@ class ReplaceTransition extends React.Component {
 
     if (child.props[handler]) child.props[handler](...originalArgs);
     if (this.props[handler]) {
-      const maybeNode = child.props.nodeRef
-        ? undefined
-        : ReactDOM.findDOMNode(this);
+      let maybeNode;
+      if (child.props.nodeRef) {
+        maybeNode = undefined;
+      } else if (canUseFindDOMNode()) {
+        maybeNode = findDOMNode(this);
+      } else {
+        maybeNode = this.findHostNode(originalArgs[0]);
+      }
 
       this.props[handler](maybeNode);
     }
+  }
+
+  // React 19+ stand-in for `findDOMNode(this)`, built from the node the child
+  // `Transition` passed to its callback. That node sits directly inside the
+  // element `TransitionGroup` renders (a <div> by default), which is what
+  // `findDOMNode(this)` returns; with `component={null}` it is the node itself.
+  findHostNode(childNode) {
+    if (!isDOMNode(childNode)) return null;
+    if (this.props.component === null) return childNode;
+    return childNode.parentNode;
   }
 
   render() {

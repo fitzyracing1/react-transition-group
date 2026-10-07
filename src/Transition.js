@@ -1,6 +1,11 @@
 import PropTypes from 'prop-types';
 import React from 'react';
-import ReactDOM from 'react-dom';
+import {
+  canUseFindDOMNode,
+  findDOMNode,
+  getElementRef,
+  isDOMNode,
+} from './utils/findDOMNode';
 
 import config from './config';
 import { timeoutsShape } from './utils/PropTypes';
@@ -145,6 +150,13 @@ class Transition extends React.Component {
     this.state = { status: initialStatus };
 
     this.nextCallback = null;
+
+    // React 19+ only (no `findDOMNode`): the child's DOM node, captured by the
+    // ref that `render` attaches when no `nodeRef` is passed.
+    this.childNode = null;
+    this.childRefTarget = undefined;
+    this.childRef = null;
+    this.warnedMissingNode = false;
   }
 
   static getDerivedStateFromProps({ in: nextIn }, prevState) {
@@ -224,7 +236,7 @@ class Transition extends React.Component {
         if (this.props.unmountOnExit || this.props.mountOnEnter) {
           const node = this.props.nodeRef
             ? this.props.nodeRef.current
-            : ReactDOM.findDOMNode(this);
+            : this.getDOMNode();
           // https://github.com/reactjs/react-transition-group/pull/749
           // With unmountOnExit or mountOnEnter, the enter animation should happen at the transition between `exited` and `entering`.
           // To make the animation happen,  we have to separate each rendering and avoid being processed as batched.
@@ -244,7 +256,7 @@ class Transition extends React.Component {
     const appearing = this.context ? this.context.isMounting : mounting;
     const [maybeNode, maybeAppearing] = this.props.nodeRef
       ? [appearing]
-      : [ReactDOM.findDOMNode(this), appearing];
+      : [this.getDOMNode(), appearing];
 
     const timeouts = this.getTimeouts();
     const enterTimeout = appearing ? timeouts.appear : timeouts.enter;
@@ -273,9 +285,7 @@ class Transition extends React.Component {
   performExit() {
     const { exit } = this.props;
     const timeouts = this.getTimeouts();
-    const maybeNode = this.props.nodeRef
-      ? undefined
-      : ReactDOM.findDOMNode(this);
+    const maybeNode = this.props.nodeRef ? undefined : this.getDOMNode();
 
     // no exit animation skip right to EXITED
     if (!exit || config.disabled) {
@@ -336,7 +346,17 @@ class Transition extends React.Component {
     this.setNextCallback(handler);
     const node = this.props.nodeRef
       ? this.props.nodeRef.current
-      : ReactDOM.findDOMNode(this);
+      : this.getDOMNode();
+
+    if (!node && timeout != null && this.usesInternalRef()) {
+      // React 19+ without `nodeRef`, and the child did not hand its DOM node to
+      // our ref (e.g. a function component that ignores `ref`). The node most
+      // likely exists, we just cannot see it, so keep the timing that
+      // `findDOMNode` would have given. `addEndListener` needs the node, so it
+      // is skipped, as it is upstream whenever the node is missing.
+      setTimeout(this.nextCallback, timeout);
+      return;
+    }
 
     const doesNotHaveTimeoutOrListener =
       timeout == null && !this.props.addEndListener;
@@ -355,6 +375,66 @@ class Transition extends React.Component {
     if (timeout != null) {
       setTimeout(this.nextCallback, timeout);
     }
+  }
+
+  // True when the node comes from our internal ref rather than `findDOMNode`.
+  usesInternalRef() {
+    return !this.props.nodeRef && !canUseFindDOMNode();
+  }
+
+  // Stand-in for `ReactDOM.findDOMNode(this)`; only called without `nodeRef`.
+  getDOMNode() {
+    if (canUseFindDOMNode()) {
+      return findDOMNode(this);
+    }
+
+    const node = this.childNode;
+    if (isDOMNode(node)) return node;
+
+    if (process.env.NODE_ENV !== 'production' && !this.warnedMissingNode) {
+      this.warnedMissingNode = true;
+      // eslint-disable-next-line no-console
+      console.warn(
+        'react-transition-group: <Transition> could not find the DOM node of ' +
+          'its child. React 19 removed ReactDOM.findDOMNode, so either pass a ' +
+          '`nodeRef` prop, or make sure the child accepts a `ref` (a DOM ' +
+          'element, a forwardRef component, or a component that passes its ' +
+          '`ref` prop to a DOM element). Until then the transition still runs ' +
+          'on its `timeout`, but callbacks receive `null` instead of the node ' +
+          'and CSSTransition cannot apply its classes.'
+      );
+    }
+    return null;
+  }
+
+  // A ref for the child that records its DOM node and still feeds the child's
+  // own ref (object or callback, including React 19 cleanup functions). It is
+  // reused while the child's ref stays the same, so React does not detach and
+  // re-attach it on every render.
+  getChildRef(element) {
+    const target = getElementRef(element);
+    if (this.childRef && this.childRefTarget === target) {
+      return this.childRef;
+    }
+
+    this.childRefTarget = target;
+    this.childRef = (node) => {
+      this.childNode = node;
+
+      if (typeof target === 'function') {
+        const cleanup = target(node);
+        if (typeof cleanup === 'function') {
+          return () => {
+            this.childNode = null;
+            cleanup();
+          };
+        }
+      } else if (target) {
+        target.current = node;
+      }
+      return undefined;
+    };
+    return this.childRef;
   }
 
   render() {
@@ -385,12 +465,30 @@ class Transition extends React.Component {
       ...childProps
     } = this.props;
 
+    let child;
+    if (typeof children === 'function') {
+      child = children(status, childProps);
+      if (
+        this.usesInternalRef() &&
+        React.isValidElement(child) &&
+        child.type !== React.Fragment
+      ) {
+        child = React.cloneElement(child, { ref: this.getChildRef(child) });
+      }
+    } else {
+      const onlyChild = React.Children.only(children);
+      child = React.cloneElement(
+        onlyChild,
+        this.usesInternalRef()
+          ? { ...childProps, ref: this.getChildRef(onlyChild) }
+          : childProps
+      );
+    }
+
     return (
       // allows for nested Transitions
       <TransitionGroupContext.Provider value={null}>
-        {typeof children === 'function'
-          ? children(status, childProps)
-          : React.cloneElement(React.Children.only(children), childProps)}
+        {child}
       </TransitionGroupContext.Provider>
     );
   }
@@ -403,7 +501,10 @@ Transition.propTypes = {
    *
    *   - This prop is optional, but recommended in order to avoid defaulting to
    *      [`ReactDOM.findDOMNode`](https://reactjs.org/docs/react-dom.html#finddomnode),
-   *      which is deprecated in `StrictMode`
+   *      which is deprecated in `StrictMode`. React 19 removed `findDOMNode`;
+   *      there, without `nodeRef`, the node is read through a ref attached to
+   *      the child, so the child must be a DOM element, a `forwardRef`
+   *      component, or a component that passes its `ref` prop to a DOM element.
    *   - When `nodeRef` prop is used, `node` is not passed to callback functions
    *      (e.g. `onEnter`) because user already has direct access to the node.
    *   - When changing `key` prop of `Transition` in a `TransitionGroup` a new
