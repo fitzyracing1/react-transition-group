@@ -1,3 +1,12 @@
+## 4.4.6 (@fitzyracing/react-transition-group, 2026-10-07)
+
+First release of the [360 Bench](https://github.com/fitzyracing1/360-bench) fork.
+
+### Bug Fixes
+
+* React 19: `Transition`, `CSSTransition`, `SwitchTransition`, `TransitionGroup` and `ReplaceTransition` no longer crash with "findDOMNode is not a function" when no `nodeRef` is passed. On React 19 the child's DOM node is read through an internal ref, combined with the child's own ref. React 16.6 to 18 still use `findDOMNode`, unchanged ([#918](https://github.com/reactjs/react-transition-group/issues/918))
+* React 19: when the child cannot take a ref, the transition keeps its `timeout` instead of finishing immediately, and a development warning suggests `nodeRef`
+
 ## [4.4.5](https://github.com/reactjs/react-transition-group/compare/v4.4.4...v4.4.5) (2022-08-01)
 
 
