@@ -160,3 +160,8 @@ Original project: https://github.com/reactjs/react-transition-group
 
 [npm-badge]: https://img.shields.io/npm/v/@fitzyracing/react-transition-group.svg
 [npm]: https://www.npmjs.com/package/@fitzyracing/react-transition-group
+
+## Project documentation
+
+- In-repo docs: [docs/](docs/index.md)
+- Wiki: [https://github.com/fitzyracing1/react-transition-group/wiki](https://github.com/fitzyracing1/react-transition-group/wiki)
