@@ -26,6 +26,7 @@ const keep = [
   'browserify',
   'sideEffects',
   'publishConfig',
+  'funding',
 ];
 
 const pkg = {};

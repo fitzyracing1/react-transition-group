@@ -1,6 +1,6 @@
 {
   "name": "@fitzyracing/react-transition-group",
-  "version": "4.4.6",
+  "version": "4.4.7",
   "private": true,
   "description": "A react component toolset for managing animations (maintained fork of react-transition-group that works on React 19 without nodeRef)",
   "main": "lib/cjs/index.js",
