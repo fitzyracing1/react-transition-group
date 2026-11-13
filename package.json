@@ -135,5 +135,9 @@
   "sideEffects": false,
   "publishConfig": {
     "access": "public"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/fitzyracing1"
   }
 }
